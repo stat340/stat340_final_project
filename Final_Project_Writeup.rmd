@@ -1,0 +1,127 @@
+---
+title: "Analysis of COVID-19 Testing Data within Institutions of Higher Education in the United States"
+subtitle: "An In-depth Bayesian Hierarchical Beta-Binomial Model Application"
+author: "Yicheng Shen, Yucheng Yang, Mitchell Wang"
+date: "11/13/2021"
+indent: true
+header-includes:
+    - \setlength{\parindent}{4em}
+    - \setlength{\parskip}{0em}
+    - \usepackage{setspace}\doublespacing
+    - \usepackage{indentfirst}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE,warning=F)
+library(ggplot2)
+library(dplyr)
+library(knitr) 
+library(tidyr)
+library(gridExtra)
+library(kableExtra)
+library(stargazer)
+library(tidyverse) 
+library(kableExtra)
+library(ProbBayes)
+library(bayesrules)
+library(BB)
+library(LearnBayes)
+library(rjags)
+library(bayesplot)
+library(coda)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(10924,54123,3425,2153)[chain]
+  .RNG.name <- c("base::Super-Duper","base::Super-Duper","base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))}
+```
+
+
+\section{Introduction}
+
+Much of the year 2021 has been featured with mourning grief and crucial challenges as governments and scientists around the world continue to study how to battle the COVID-19 pandemic and restore citizens’ hopes from the enduring health crisis.
+However, the insufficiency of public health resources and concerns of community infections persist as we walk towards the third year since the initial outbreak of the pandemic. 
+As of November 12, 2021, the CDC reports that the total positive coronavirus cases in the United States have exceeded 46.8 million with nearly 760,000 related deaths. These alarming statistics constantly remind us that this pandemic is far from over give the current situation. 
+
+
+Meanwhile, tens of thousands of new cases have emerged on college campuses according to the New York Times, with most of the on-campus cases announced since students returned to campus for the fall term in 2020. Despite usually having high vaccination rates, mask mandates and social distancing requirements, these densely populated campus communities are still vulnerable to highly contagious diseases. As more and more schools began to actively test their population and publish relevant data, it is not only feasible but also imperative that we conduct proper analysis on the COVID spread within campus communities.    
+
+
+In this project, we are interested in exploring whether Carleton College has effectively contained the infectious disease and protected its campus population from the pandemic, using the weekly testing numbers and positive cases published by Carleton's COVID-19 working groups and committees since the beginning of fall term in 2020. 
+Based on our Bayesian hierarchical beta-binomial model, we found that **[Summarize Key findings]**. 
+We further applied our methodologies in analyzing a large sample of 30 higher education institutions in the U.S. Our findings suggest that **[Summarize Key findings]**
+
+
+\section{Data}
+
+As the public health impact of colleges reopening has become apparent, there has been a substantive move towards greater transparency of COVID testing and reports. The most notable efforts of ensuring information transparency are presented by the COVID dashboards, now maintained by a significant number of institutions in order to publish their COVID policies, statistics and future plans. 
+The best dashboards, according to the We Rate COVID Dashboards rating scheme, are updated at least once every weekday and include information not only about the positive number of cases but also about the total number of COVID tests conducted and the frequency of testing. 
+These online resources provide us with detailed and easily accessible data that can be used for our model fitting and analysis. 
+
+
+To obtain a full picture of the COVID positive rates among the U.S. higher education institutions, we extracted and complied data from 30 university and college COVID dashboards, including Carleton College, our very own campus. 
+For Carleton College, the dashboard publishes 56 weeks of COVID testing data across four terms. The earliest record started on August 9th, 2020 and the latest one was November 5th, 2021. 
+The data set contains the total number of tests conducted each week, the number of positive and negative tests, and the positive rates within that 7 day period. 
+Among the 56 weeks of records, we have 38 weeks when classes were in session and the college had at least 80% of students on campus, and the rest 18 weeks were summer, winter and spring breaks when most of the student and faculty population were absent. 
+
+
+As full-time college students, our primary interests are to better understand our college's COVID responses and conditions during academic terms, when the majority of the students spend most of the time on campus. Therefore, our analysis would focus on the data from four terms: 10 weeks each for 2020 fall , 2021 winter and 2021 spring, and 8 weeks for 2021 fall term (when the latest record ends). 
+
+
+When looking into a broader population of U.S. colleges and universities, our sampled institutions are largely determined by the availability of clear, published and comprehensive records.
+Since it is the graduate school application season for college seniors, our group complied a list of potential institutions that we are interested in applying or learning more about so that the project could provide us with more relevant insights. Based on whether their COVID dashboards are usable, we selected 30 institutions in total, with 20 universities and 10 liberal arts colleges. 
+These universities and colleges generally have similar length of records as Carleton, starting from summer of 2020 until November of 2021. The full list of our sampled institutions are shown in Table 1. 
+Since schools have various reporting standards and different lengths of semesters or trimesters, it is hard to separate the periods of class in session from them.
+For each institution, we recorded the total number of COVID tests conducted and the total positive cases reported since the summer of 2020. 
+
+
+```{r fig.align="center", out.width = "80%", out.height = "55%", echo=F}
+include_graphics("Image/sample_list.png")
+```
+
+
+
+
+\section{Methods}
+
+Our project relies primarily on Bayesian statistical methods and Just another Gibbs sampler (JAGS), which is a program for simulation from Bayesian hierarchical models using Markov chain Monte Carlo, developed by Martyn Plummer (Plummer, 2003).
+
+As college seniors who have been living on campus  for two years since the pandemic, we do have some prior impression regarding the COVID situations around us, but the details and exact statistics among and beyond our communities are not always fully understood. Therefore, we consider ourselves possessing weakly informative prior belief on the subject. 
+
+In both within Carleton and school to school cases, we recognize that there are certain group structures in our data.  Observations within each group are correlated, and knowing the case of one week or one school can tell us more information about others. 
+We also want to be able to make generalizations to future scenarios and broader populations based on our sampled data. 
+Consequently, we decide to employ a hierarchical beta-binomial model structure to analyze the rate of positive cases among total tests conducted. 
+For Carleton's data, we identify each term as a grouping factor, each having 10 or 8 weeks of observations. For the sample of 30 institutions, we consider each school as a group. 
+
+
+Model Specification for Carleton Covid Dashboard Analysis
+
+**[Content about hierarchical model]**
+
+
+Model Specification for American Institutions of Higher Education
+
+**[Content about hierarchical model]**
+
+
+\section{Results}
+
+\subsection{Carleton Covid Dashboard Analysis}
+
+
+\subsection{Covid Trend in American Institutions of Higher Education}
+
+
+\section{Discussion}
+
+
+
+
+# Reference
+
+Plummer, M. (2003, March). JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling. In Proceedings of the 3rd international workshop on distributed statistical computing (Vol. 124, No. 125.10, pp. 1-10).
+
+The New York Times. (2020, August 26). Tracking the coronavirus at U.S. colleges and Universities. The New York Times. Retrieved November 13, 2021, from https://www.nytimes.com/interactive/2020/us/covid-college-cases-tracker.html. 
