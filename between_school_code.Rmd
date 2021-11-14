@@ -1,0 +1,890 @@
+---
+title: "corss-compare"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message = F, echo = F, warning = F}
+library(ProbBayes)
+library(tidyverse)
+library(bayesrules)
+library(patchwork)
+library(ggplot2)
+library(runjags)
+library(coda)      
+library(bayesplot) 
+```
+
+
+# data wrangling 
+```{r}
+between<- read.csv("between.csv")
+#View(between)
+cross<- between %>% mutate(Test_Rate = Total_Tests/Enrollment)
+cross<- cross %>% mutate(type_num = ifelse(Type  == "LAC", 1, 0))
+
+```
+
+# JAGS
+```{r}
+modelString <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta1*type[i] +beta2*pop[i] +beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta1 ~ dnorm(0, 0.001)
+beta2 ~ dnorm(0, 0.001)
+beta3 ~ dnorm(0, 0.001)
+}
+"
+
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+pop <- cross$Enrollment
+test_rate<- cross$Test_Rate
+N <- length(y)
+the_data <- list("y" = y, "n" = n, "N" = N, "type" = type, "pop" = pop, "test_rate" = test_rate,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior_school <- run.jags(modelString,
+                 data = the_data,
+                 n.chains = 3,
+                 monitor = c("p"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 inits = init, silent.jags = TRUE)
+
+
+
+```
+
+# diagnostics
+```{r}
+# p all converged
+mcmc_trace(posterior_school$mcmc)
+# acf all looks good
+mcmc_acf(posterior_school$mcmc)
+#looks good
+
+mcmc_dens_overlay(posterior_school$mcmc)
+
+summary(posterior_school$mcmc)
+```
+
+# inference
+```{r, eval = F, echo = F }
+post_intervals <- mcmc_intervals_data(posterior_school$mcmc, regex_pars = "p", prob_outer = 0.9)
+slice(post_intervals, 1:30) %>%
+  ggplot(
+    aes(x = reorder(parameter, (m)), y = (m), ymin = (ll), ymax = (hh))) +
+  geom_pointrange() +
+  theme_light() +
+  xaxis_text(angle = 0, size = 6) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+)+ xlab("School") + ylab("Rate")
+```
+
+# betas
+```{r}
+posterior_beta <- run.jags(modelString,
+                 data = the_data,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta1", "beta2", "beta3"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+
+# good enough
+mcmc_trace(posterior_beta$mcmc)
+# acf all looks good
+mcmc_acf(posterior_beta$mcmc)
+#looks good
+
+mcmc_dens_overlay(posterior_beta$mcmc)
+```
+
+# notes
+1. the mean of the p for each institution is a regression of the type of institution, the enrollment number, the test rate
+2. however, the value of beta2, ie the coefficient of enrollment is too small
+
+
+```{r}
+summary(posterior_beta)
+```
+
+
+# dropped enrollment as a regressor 
+```{r}
+modelString2 <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta1*type[i] +beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta1 ~ dnorm(0, 0.001)
+beta3 ~ dnorm(0, 0.001)
+}
+"
+
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+pop <- cross$Enrollment
+test_rate<- cross$Test_Rate
+N <- length(y)
+the_data2 <- list("y" = y, "n" = n, "N" = N, "type" = type, "test_rate" = test_rate,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior_beta2 <- run.jags(modelString2,
+                 data = the_data2,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta1", "beta3"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+summary(posterior_beta2)
+
+
+```
+
+
+```{r}
+# good enough
+mcmc_trace(posterior_beta2$mcmc)
+# acf all looks good -- thin = 5
+mcmc_acf(posterior_beta2$mcmc)
+#looks good
+mcmc_dens_overlay(posterior_beta2$mcmc)
+```
+
+```{r}
+summary(posterior_beta2)
+```
+
+
+
+## posterior check
+
+### plot regressions lines
+```{r}
+#plot 100 posterior model lines for beta3 (beta1 for type is dummy)
+posterior_lines_beta3 <- posterior_beta2$mcmc[[1]][1:100,c("beta0", "beta3")] %>%
+as.data.frame() %>%
+mutate(x = -100, xend = 100, y = beta0 + beta3 * x , yend = beta0 + beta3 * xend)
+ggplot(posterior_lines_beta3) +
+geom_segment(aes(x = x, y = y, xend = xend, yend = yend), alpha = 0.5)
+
+```
+
+### posterier predictive check
+```{r}
+
+modelString3 <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta1*type[i] +beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta1 ~ dnorm(0, 0.001)
+beta3 ~ dnorm(0, 0.001)
+
+
+#predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+}
+"
+
+
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+pop <- cross$Enrollment
+test_rate<- cross$Test_Rate
+N <- length(y)
+the_data2 <- list("y" = y, "n" = n, "N" = N, "type" = type, "test_rate" = test_rate,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior_pred <- run.jags(modelString3,
+                 data = the_data2,
+                 n.chains = 3,
+                 monitor = c("y_pred"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 inits = init, silent.jags = TRUE)
+
+```
+
+
+```{r}
+#??
+ppc_dens_overlay(cross$Positive_Results, posterior_pred$mcmc[[1]])
+```
+
+```{r}
+#actually pretty good
+ppc_stat_grouped(y = cross$Positive_Results, 
+                 yrep= posterior_pred$mcmc[[1]],
+                 group = cross$Institution)
+```
+
+## try log and z-score enrollment
+
+```{r}
+modelString4 <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta1*type[i] +beta2*log_enrol[i]+beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta1 ~ dnorm(0, 0.001)
+beta2 ~ dnorm(0, 0.001)
+beta3 ~ dnorm(0, 0.001)
+
+
+#predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+}
+"
+
+
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+pop <- cross$Enrollment
+test_rate<- cross$Test_Rate
+log_enrol <- log(cross$Enrollment)
+N <- length(y)
+the_data4 <- list("y" = y, "n" = n, "N" = N, "type" = type, "test_rate" = test_rate,"log_enrol" = log_enrol,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior4 <- run.jags(modelString4,
+                 data = the_data4,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta1", "beta2","beta3"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+
+```
+
+```{r}
+# not good except for beta3
+mcmc_trace(posterior4$mcmc)
+# acf not good even with thin =5
+mcmc_acf(posterior4$mcmc)
+#nono
+mcmc_dens_overlay(posterior4$mcmc)
+```
+
+## z-score enrollment
+```{r}
+modelString5 <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta1*type[i] +beta2*z_enrol[i]+beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta1 ~ dnorm(0, 0.001)
+beta2 ~ dnorm(0, 0.001)
+beta3 ~ dnorm(0, 0.001)
+
+
+#predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+}
+"
+
+
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+pop <- cross$Enrollment
+test_rate<- cross$Test_Rate
+z_enrol <- (cross$Enrollment -mean(cross$Enrollment))/sqrt(var(cross$Enrollment))
+N <- length(y)
+the_data5 <- list("y" = y, "n" = n, "N" = N, "type" = type, "test_rate" = test_rate,"z_enrol" = z_enrol,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior5 <- run.jags(modelString5,
+                 data = the_data5,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta1", "beta2","beta3"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+summary(posterior5)
+```
+
+
+```{r}
+# not good except for beta3
+mcmc_trace(posterior5$mcmc)
+# acf not good even with thin =5
+mcmc_acf(posterior5$mcmc)
+#nono
+mcmc_dens_overlay(posterior5$mcmc)
+```
+
+## diagnose
+```{r}
+posterior5_2 <- run.jags(modelString5,
+                 data = the_data5,
+                 n.chains = 3,
+                 monitor = c("p"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+# good
+mcmc_trace(posterior5_2$mcmc)
+# good
+mcmc_acf(posterior5_2$mcmc)
+#good
+mcmc_dens_overlay(posterior5_2$mcmc)
+
+
+
+```
+
+
+```{r}
+post_intervals2 <- mcmc_intervals_data(posterior5_2$mcmc, regex_pars = "p", prob_outer = 0.9)
+slice(post_intervals2, 1:30) %>%
+  ggplot(
+    aes(x = reorder(parameter, (m)), y = (m), ymin = (ll), ymax = (hh))) +
+  geom_pointrange() +
+  theme_light() +
+  xaxis_text(angle = 0, size = 6) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+)+ xlab("School") + ylab("Rate")
+```
+
+## posterior predictive
+```{r}
+posterior_pred2 <- run.jags(modelString5,
+                 data = the_data5,
+                 n.chains = 3,
+                 monitor = c("y_pred"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+```
+
+```{r}
+# good
+ppc_dens_overlay(cross$Positive_Results, posterior_pred2$mcmc[[1]])
+```
+
+```{r}
+#pretty good
+ppc_stat_grouped(y = cross$Positive_Results, 
+                 yrep= posterior_pred2$mcmc[[1]],
+                 group = cross$Institution)
+```
+
+## try just intercept and test_rate
+```{r}
+modelString5_rate <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta3 ~ dnorm(0, 0.001)
+
+
+#predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+}
+"
+
+
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+pop <- cross$Enrollment
+test_rate<- cross$Test_Rate
+z_enrol <- (cross$Enrollment -mean(cross$Enrollment))/sqrt(var(cross$Enrollment))
+N <- length(y)
+the_data5_rate <- list("y" = y, "n" = n, "N" = N, "test_rate" = test_rate,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior5_rate <- run.jags(modelString5_rate,
+                 data = the_data5_rate,
+                 n.chains = 3,
+                 monitor = c("beta0","beta3"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+summary(posterior5_rate)
+```
+
+
+
+```{r}
+mcmc_trace(posterior5_rate$mcmc)
+mcmc_acf(posterior5_rate$mcmc)
+mcmc_dens_overlay(posterior5_rate$mcmc)
+
+
+mcmc_trace(posterior_beta2$mcmc)
+# acf all looks good -- thin = 5
+mcmc_acf(posterior_beta2$mcmc)
+#looks good
+mcmc_dens_overlay(posterior_beta2$mcmc)
+
+```
+
+
+
+
+
+# just LAC
+
+```{r}
+lac<- cross %>% filter(cross$Type == "LAC")
+```
+
+
+## same formula for posterior5
+```{r}
+modelString6 <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta2*z_enrol[i]+beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta1 ~ dnorm(0, 0.001)
+beta2 ~ dnorm(0, 0.001)
+beta3 ~ dnorm(0, 0.001)
+
+
+#predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+}
+"
+
+
+y <- lac$Positive_Results
+n <- lac$Total_Tests
+pop <- lac$Enrollment
+test_rate<- lac$Test_Rate
+z_enrol <- (lac$Enrollment -mean(lac$Enrollment))/sqrt(var(lac$Enrollment))
+N <- length(y)
+the_data6 <- list("y" = y, "n" = n, "N" = N, "test_rate" = test_rate,"z_enrol" = z_enrol,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior6 <- run.jags(modelString6,
+                 data = the_data6,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta2","beta3"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+summary(posterior6)
+
+```
+
+## drop test_rate
+```{r}
+modelString7 <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta2*z_enrol[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta2 ~ dnorm(0, 0.001)
+
+
+
+#predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+}
+"
+
+
+y <- lac$Positive_Results
+n <- lac$Total_Tests
+z_enrol <- (lac$Enrollment -mean(lac$Enrollment))/sqrt(var(lac$Enrollment))
+N <- length(y)
+the_data7 <- list("y" = y, "n" = n, "N" = N, "z_enrol" = z_enrol,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior7 <- run.jags(modelString7,
+                 data = the_data7,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta2"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+summary(posterior7)
+```
+
+
+## just test_rate intercept
+
+
+```{r}
+modelString8 <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.01)
+beta3 ~ dnorm(0, 0.001)
+
+
+
+#predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+}
+"
+
+
+y <- lac$Positive_Results
+n <- lac$Total_Tests
+test_rate<- lac$Test_Rate
+N <- length(y)
+the_data8 <- list("y" = y, "n" = n, "N" = N, "test_rate" = test_rate,
+                 "logn" = log(100))
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior8 <- run.jags(modelString8,
+                 data = the_data8,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta3"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+summary(posterior8)
+```
+
+
+# no regressor is fine
+
+```{r}
+modelString9 <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+## priors
+for (i in 1:N){
+   p[i] ~ dbeta(a, b)
+}
+## hyperpriors
+a <- mu*eta
+b <- (1-mu)*eta
+mu ~ dbeta(mua, mub)
+eta <- exp(logeta)
+logeta ~ dlogis(logn, 1)
+}
+"
+y <- lac$Positive_Results
+n <- lac$Total_Tests
+N <- length(y)
+the_data9 <- list("y" = y, "n" = n, "N" = N,
+                 "mua" = 1, "mub" = 1,
+                 "logn" = log(100))
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior9 <- run.jags(modelString9,
+                 data = the_data9,
+                 n.chains = 3,
+                 monitor = c("p"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 5000,
+                 inits = init, silent.jags = TRUE)
+
+
+```
+
