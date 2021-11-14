@@ -72,7 +72,7 @@ As full-time college students, our primary interests are to better understand ou
 
 
 When looking into a broader population of U.S. colleges and universities, our sampled institutions are largely determined by the availability of clear, published and comprehensive records.
-Since it is the graduate school application season for college seniors, our group complied a list of potential institutions that we are interested in applying or learning more about so that the project could provide us with more relevant insights. Based on whether their COVID dashboards are usable, we selected 30 institutions in total, with 20 universities and 10 liberal arts colleges. 
+Since it is the graduate school application season for college seniors, our group complied a list of potential institutions that we are interested in applying or learning more about so that the project could provide us with more relevant insights. Based on whether their COVID dashboards are usable, we selected 30 institutions in total, with 19 universities and 11 liberal arts colleges. 
 These universities and colleges generally have similar length of records as Carleton, starting from summer of 2020 until November of 2021. The full list of our sampled institutions are shown in Table 1. 
 Since schools have various reporting standards and different lengths of semesters or trimesters, it is hard to separate the periods of class in session from them.
 For each institution, we recorded the total number of COVID tests conducted and the total positive cases reported since the summer of 2020. 
