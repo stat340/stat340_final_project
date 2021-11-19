@@ -107,8 +107,8 @@ For the first model (Model1), we used the logistic regression as a link function
 + Sampling: for j in 1,...30:
 \begin{equation}
 \begin{gathered}
-\mathbf{Y}_{j}|\mathbf{p}_{j}, \mathbf{n}_{j} \stackrel{i.i.d.}{\sim} \binom{\mathbf{n}_{j}}{\mathbf{p}_{j}}\\
-logit(\mathbf{p}_{j}) = \mathbf{\beta_{0}} +  \mathbf{\beta_{1}} * Type + \mathbf{\beta_{2}} * Zscore\hspace{0.1cm}Enrollment + \mathbf{\beta_{3}} * Zscore\hspace{0.1cm}TestRate
+Y_{j}|p_{j}, n_{j} \stackrel{i.i.d.}{\sim} \binom{n_{j}}{p_{j}}\\
+logit(p_{j}) = \beta_{0} + \beta_{1} * Type + \beta_{2} * Zscore\hspace{0.1cm}Enrollment + \beta_{3} * Zscore\hspace{0.1cm}TestRate
 \end{gathered}
 \end{equation}
 
@@ -117,10 +117,10 @@ logit(\mathbf{p}_{j}) = \mathbf{\beta_{0}} +  \mathbf{\beta_{1}} * Type + \mathb
 + Prior for $\mathbf{p}_{j}$, for j= 1,...30:
 \begin{equation}
 \begin{gathered}
-\mathbf{\beta_{0}} \sim \mathcal{N}(0,\,100)\\
-\mathbf{\beta_{1}} \sim \mathcal{N}(0,\,100)\\
-\mathbf{\beta_{2}} \sim \mathcal{N}(0,\,100)\\
-\mathbf{\beta_{3}} \sim \mathcal{N}(0,\,100)
+\beta_{0} \sim \mathcal{N}(0,\,100)\\
+\beta_{1} \sim \mathcal{N}(0,\,100)\\
+\beta_{2} \sim \mathcal{N}(0,\,100)\\
+\beta_{3} \sim \mathcal{N}(0,\,100)
 \end{gathered}
 \end{equation}
 
@@ -130,8 +130,8 @@ In the second model (Model2), we assume that our positive test rate $p_{j}$ foll
 + Sampling: for j in 1,...30:
 \begin{equation}
 \begin{gathered}
-\mathbf{Y}_{j}|\mathbf{p}_{j}, \mathbf{n}_{j} \stackrel{i.i.d.}{\sim} \binom{\mathbf{n}_{j}}{\mathbf{p}_{j}}\\
-\mathbf{p}_{j} \sim {Beta}(a_{j}, b_{j})
+Y_{j}|p_{j}, n_{j} \stackrel{i.i.d.}{\sim} \binom{n_{j}}{p_{j}}\\
+p_{j} \sim {Beta}(a_{j}, b_{j})
 \end{gathered}
 \end{equation}
 
@@ -140,9 +140,9 @@ In the second model (Model2), we assume that our positive test rate $p_{j}$ foll
 + Prior for $\mathbf{p}_{j}$, for j= 1,...30:
 \begin{equation}
 \begin{gathered}
-\mathbf{a_{j}} = \phi_{j} * \mu_{j}\\ 
-\mathbf{b_{j}} = \phi_{j} * (1 - \mu_{j})\\
-logit(\mu_{j}) = \beta_{0} +\mathbf{\beta_{1}} * type_{j} + \mathbf{\beta_{3}} * TestRate_{j}\\
+a_{j} = \phi_{j} * \mu_{j}\\ 
+b_{j} = \phi_{j} * (1 - \mu_{j})\\
+logit(\mu_{j}) = \beta_{0} +\beta_{1} * type_{j} + \beta_{3} * TestRate_{j}\\
 \phi_{j} = exp(logeta_{j})\\
 logeta_{j} \sim Logistic(logn, 1)
 \end{gathered}
@@ -153,9 +153,9 @@ logeta_{j} \sim Logistic(logn, 1)
 + Hyperprior
 \begin{equation}
 \begin{gathered}
-\mathbf{\beta_{0}} \sim \mathcal{N}(0,\,100)\\
-\mathbf{\beta_{1}} \sim \mathcal{N}(0,\,100)\\
-\mathbf{\beta_{3}} \sim \mathcal{N}(0,\,100)\\
+\beta_{0} \sim \mathcal{N}(0,\,100)\\
+\beta_{1} \sim \mathcal{N}(0,\,100)\\
+\beta_{3} \sim \mathcal{N}(0,\,100)\\
 logn = log(100)
 \end{gathered}
 \end{equation}
