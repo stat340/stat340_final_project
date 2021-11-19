@@ -104,11 +104,11 @@ We decide to use Beta-Binomial models to study the positive COVID test rates acr
 
 For the first model (Model1), we used the logistic regression as a link function on $p_{j}$, and the regressors included are the intercept, the institution type, the standardized enrollment, and the standardized test rate. We assume that the intercept $\beta_{0}$, the coefficient for institution type $\beta_{1}$, the coefficient for standardized enrollment $\beta_{2}$, and the coefficient for standardized test rate $\beta_{3}$ all follows weakly informative priors $N(0, 100)$. Below are the equations for Model1: 
 
-+ Sampling: for j in 1,...30, $n_{j}$:
++ Sampling: for j in 1,...30:
 \begin{equation}
 \begin{gathered}
 \mathbf{Y}_{j}|\mathbf{p}_{j}, \mathbf{n}_{j} \stackrel{i.i.d.}{\sim} \binom{\mathbf{n}_{j}}{\mathbf{p}_{j}}\\
-\mathbf{p}_{j} = \mathbf{\beta_{0}} +  \mathbf{\beta_{1}} * Type + \mathbf{\beta_{2}} * Zscore\hspace{0.1cm}Enrollment + \mathbf{\beta_{3}} * Zscore\hspace{0.1cm}TestRate
+logit(\mathbf{p}_{j}) = \mathbf{\beta_{0}} +  \mathbf{\beta_{1}} * Type + \mathbf{\beta_{2}} * Zscore\hspace{0.1cm}Enrollment + \mathbf{\beta_{3}} * Zscore\hspace{0.1cm}TestRate
 \end{gathered}
 \end{equation}
 
@@ -127,7 +127,7 @@ For the first model (Model1), we used the logistic regression as a link function
 
 In the second model (Model2), we assume that our positive test rate $p_{j}$ follows a Beta distribution with parameters $a_{j}$ and $b_{j}$. We will use reverse elicitation to make posterior inferences on $a_{j}$ and $b_{j}$. We define the mean of the Beta distribution as $\mu_{j} = \frac{a_{j}}{a_{j} +b_{j}}$ and the sample size as $\eta = a_{j} +b_{j}$. Then we use the logistic regression as a link function on $\mu_{j}$ with regressors as the intercept, the institution type, and the test rate. Similarly, we assume the intercept $\beta_{0}$, the coefficient for institution type $\beta_{1}$, and the coefficient for test rate $\beta_{3}$ all follows weakly informative priors $N(0, 100)$. The equations for Model2 are shown below:
 
-+ Sampling: for j in 1,...30, $n_{j}$:
++ Sampling: for j in 1,...30:
 \begin{equation}
 \begin{gathered}
 \mathbf{Y}_{j}|\mathbf{p}_{j}, \mathbf{n}_{j} \stackrel{i.i.d.}{\sim} \binom{\mathbf{n}_{j}}{\mathbf{p}_{j}}\\
@@ -142,9 +142,9 @@ In the second model (Model2), we assume that our positive test rate $p_{j}$ foll
 \begin{gathered}
 \mathbf{a_{j}} = \phi_{j} * \mu_{j}\\ 
 \mathbf{b_{j}} = \phi_{j} * (1 - \mu_{j})\\
-logit(\mu_{j}) = \beta_{0} +\beta_{1} * type_{j} + beta3 * test_rate_{j}\\
+logit(\mu_{j}) = \beta_{0} +\mathbf{\beta_{1}} * type_{j} + \mathbf{\beta_{3}} * TestRate_{j}\\
 \phi_{j} = exp(logeta_{j})\\
-logeta_{j} \sim logis(logn, 1)
+logeta_{j} \sim Logistic(logn, 1)
 \end{gathered}
 \end{equation}
 
@@ -156,11 +156,12 @@ logeta_{j} \sim logis(logn, 1)
 \mathbf{\beta_{0}} \sim \mathcal{N}(0,\,100)\\
 \mathbf{\beta_{1}} \sim \mathcal{N}(0,\,100)\\
 \mathbf{\beta_{3}} \sim \mathcal{N}(0,\,100)\\
-logn = log^{100}
+logn = log(100)
 \end{gathered}
 \end{equation}
 
-For both Model1 and Model2, we made an additional 10000 draws after an adaptation period of 1000 draws and a burn-in period of 5000 draws. We keep every 5th draws to reduce the effect of temporal correlation between consecutive MCMC draws. For convergence consistency, we ran 3 chains for both models.
+For both Model1 and Model2, we made an additional 10000 draws after an adaptation period of 1000 draws and a burn-in period of 5000 draws, and we kept every 5th draws to reduce the effect of temporal correlation between consecutive MCMC draws. For convergence consistency, we ran 3 chains for both models.
+
 
 • \ Diagnostics: 
 For Model1, the trace plots and ACF plots show that our draws are well-mixed and our parameters have converged to their posterior region. The overlaid density plots show that the draws from 3 separate chains all converged to the same distribution with roughly the same density curves. To make sure that Model1 gives realistic predictions as what we would see in real life, we simulated data sets using Model1 and compared them to the observed data. We first checked the overlayed density plot; of the 100 simulated data sets we randomly selected, they all have similar density curves as the density curve of the observed data. Then we compared the observed mean number of the positive test of each institution to the distribution of the 10000 mean number of the positive test of the simulated data to check if the posterior estimates of the mean of number the positive test using $p_{j}$ are reasonable. We discovered that the observed mean lies in the center of the distribution of the simulated data mean for almost all institutions, which indicates that a data set like the one we observed is not uncommon compared to the data simulated using Model1, which confirmed that Model1 is adequate. 
