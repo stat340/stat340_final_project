@@ -1,0 +1,298 @@
+---
+title: "cross institution draft"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ProbBayes)
+library(tidyverse)
+library(bayesrules)
+library(patchwork)
+library(ggplot2)
+library(runjags)
+library(bayesplot) 
+```
+
+
+
+
+```{r model mu, echo=FALSE, out.width='50%'}
+between<- read.csv("proj_11.14.csv")
+#View(between)
+cross<- between %>% mutate(Test_Rate = Total_Tests/Enrollment)
+cross<- cross %>% mutate(type_num = ifelse(Type  == "LAC", 1, 0))
+
+
+modelString_mu <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta1*type[i] +beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.0001)
+beta1 ~ dnorm(0, 0.0001)
+beta3 ~ dnorm(0, 0.0001)
+
+## predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+}
+
+"
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+#pop <- cross$Enrollment
+test_rate<- cross$Test_Rate
+N <- length(y)
+the_data2 <- list("y" = y, "n" = n, "N" = N, "type" = type, "test_rate" = test_rate,
+                 "logn" = log(100))
+
+
+
+seed = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+posterior_mu <- run.jags(modelString_mu,
+                 data = the_data2,
+                 n.chains = 3,
+                 monitor = c("beta0","beta1","beta3", "p", "y_pred"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 10000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+
+```
+
+
+
+
+\subsection{Between comparison of 30 educational instituions in the US}
+
+We decide to use Beta-Binomial models to study the positive COVID test rates across these institutions. In our setting, we assume that the number of people tested as positive follows a binomial distribution with the total number of tests administrated denoted as $n_{j}$; each test will be one independent Bernoulli trial with probability of $p_{j}$ as the chance of one COVID test administrated in these institutions came back positive. The subscript $j$ specifies that these parameters are institution-specific and $j$ itself correspond to institution index number in our sample. We think that there exist potential factors that affect $p_j$ and the relationship between $p_j$ and these factors are linear as shown in Figure.4 in the Results section. The factors we considered include the institution type (University versus LAC), institution enrollment, and the test rate (calculated as the total number of tests administrated from 2020 to 2021 divided by enrollment for each institution). We also assume that there exists some baseline positive test rate for all educational institutions in the US. In this section, we are interested in studying how well the educational institutions in the US are dealing with the COVID pandemic by investigating $p_j$ across these different schools. 
+
+
+For the first model (Model1), we used the logit function as a link function on $p_{j}$; for the link function, we used a simple linear regression including an intercept, the institution type, the standardized enrollment, and the standardized test rate. We denote the intercept as $\beta_{0}$, the coefficient for institution type variable as $\beta_{1}$, the coefficient for the standardized enrollment as $\beta_{2}$, and the coefficient for the standardized test rate as $\beta_{3}$. For all the coefficients mentioned above, we assume they all follow a weakly informative prior $N(0, 100)$.
+
+• \ Below are the equations for Model1: 
+
++ Sampling: for j in 1,...30:
+\begin{equation}
+\begin{gathered}
+Y_{j}|p_{j}, n_{j} \stackrel{i.i.d.}{\sim} \binom{n_{j}}{p_{j}}\\
+logit(p_{j}) = \beta_{0} + \beta_{1} * Type + \beta_{2} * Zscore\hspace{0.1cm}Enrollment + \beta_{3} * Zscore\hspace{0.1cm}TestRate
+\end{gathered}
+\end{equation}
+
+
+
++ Prior for $\mathbf{p}_{j}$, for j= 1,...30:
+\begin{equation}
+\begin{gathered}
+\beta_{0} \sim \mathcal{N}(0,\,100)\\
+\beta_{1} \sim \mathcal{N}(0,\,100)\\
+\beta_{2} \sim \mathcal{N}(0,\,100)\\
+\beta_{3} \sim \mathcal{N}(0,\,100)
+\end{gathered}
+\end{equation}
+
+
+
+
+In the second model (Model2), we assume that $p_{j}$ follows a Beta distribution with parameters $a_{j}$ and $b_{j}$. We will use reverse elicitation to make posterior inferences on $a_{j}$ and $b_{j}$. We define the mean of the Beta distribution as $\mu_{j} = \frac{a_{j}}{a_{j} +b_{j}}$ and the sample size as $\eta = a_{j} +b_{j}$. **?** Then we use the logit function as a link function on $\mu_{j}$ with regressors as the intercept, the institution type, and the test rate. Similarly, we denotes the intercept as $\beta_{0}$, the coefficient for institution type as $\beta_{1}$, and the coefficient for test rate as $\beta_{3}$. Again, the coefficients mentioned here all follow a weakly informative prior $N(0, 100)$. 
+
+• \ The equations for Model2 are shown below:
+
+
++ Sampling: for j in 1,...30:
+\begin{equation}
+\begin{gathered}
+Y_{j}|p_{j}, n_{j} \stackrel{i.i.d.}{\sim} \binom{n_{j}}{p_{j}}\\
+p_{j} \sim {Beta}(a_{j}, b_{j})
+\end{gathered}
+\end{equation}
+
+
+
++ Prior for $\mathbf{p}_{j}$, for j= 1,...30:
+\begin{equation}
+\begin{gathered}
+a_{j} = \phi_{j} * \mu_{j}\\ 
+b_{j} = \phi_{j} * (1 - \mu_{j})\\
+logit(\mu_{j}) = \beta_{0} +\beta_{1} * type_{j} + \beta_{3} * TestRate_{j}\\
+\phi_{j} = exp(logeta_{j})\\
+logeta_{j} \sim Logistic(logn, 1)
+\end{gathered}
+\end{equation}
+
+
+
++ Hyperprior
+\begin{equation}
+\begin{gathered}
+\beta_{0} \sim \mathcal{N}(0,\,100)\\
+\beta_{1} \sim \mathcal{N}(0,\,100)\\
+\beta_{3} \sim \mathcal{N}(0,\,100)\\
+logn = log(100)
+\end{gathered}
+\end{equation}
+
+For both Model1 and Model2, we made an additional 10000 draws for every chain after an adaptation period of 1000 draws and a burn-in period of 5000 draws, and we kept every 5th draws to reduce the effect of temporal correlation between consecutive MCMC draws. For convergence consistency, we ran 3 chains for both models.
+
+
+• \ Diagnostics: 
+For Model1, the trace plots and ACF plots show that our draws are well-mixed and our parameters have converged to their posterior regions. The overlaid density plots show that the draws from 3 separate chains all converged to the same distribution with roughly the same density curves. To make sure that Model1 is adequate, we conducted the posterior predictive check by comparing simulated data sets generated by Model1 to the observed data. We first checked the overlaied density plot: of the 100 simulated data sets we randomly selected, almost all of them have similar density curves as the density curve of the observed data. Then we compared the observed mean $p_{j}$ of each institution to the distribution of the 10000 mean $p_{j}$ of the simulated data to check if our posterior estimates of $p_{j}$ are reasonable. We discovered that the observed $p_{j}$ lies in the center of the distribution of the $p_{j}$ of the simulated data for almost all institutions. This indicates that a data set like the one we observed is not uncommon compared to the data simulated by Model1, which confirmed that Model1 is adequate. 
+
+For Model2, we also see that our draws are well-mixed and our parameters have converged to their posterior regions from checking the trace plots and ACF plots. The overlaid density plots also show that the draws from 3 separate chains all converged to the same distribution with roughly the same density curves. Similarly, we also conducted the posterior predictive check on Model2. The 100 simulated data have very similar density curves to the density curve of the observed data. As in Model1, checking the posterior estimates of $p_{j}$ confirmed the fact that our model is able to generate data that mimic the observed data, and therefore we will be able to conclude that Model2 is adequate as well. 
+
+
+## Results
+
+### EDA
+
+The figure below shows that the 
+```{r EDA, echo = F, out.width='50%', fig.align="center"}
+a<- ggplot(cross, aes( x = Positive_Rate, y = Test_Rate, group = 1)) +geom_point()+geom_smooth(method = "lm",se = F) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+
+
+b<- ggplot(cross, aes( x = Positive_Rate, y = Enrollment, group = 1)) +geom_point()+geom_smooth(method = "lm",se = F) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+
+a+b+plot_layout(ncol = 1, nrow = 2)
+
+
+```
+
+
+```{r model p stand, results='hide', echo=FALSE}
+modelString_p_stand <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+   ## priors and regression
+   logit(p[i]) <- beta0 +beta1*type[i]+beta2*z_enrol[i]+beta3*z_test_rate[i]
+}
+
+## hyperpriors
+
+beta0 ~ dnorm(0, 0.0001)
+beta1 ~ dnorm(0, 0.0001)
+beta2 ~dnorm(0,0.0001)
+beta3 ~ dnorm(0, 0.0001)
+
+## predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+
+
+}
+
+"
+
+
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+z_enrol <- (cross$Enrollment -mean(cross$Enrollment))/sqrt(var(cross$Enrollment))
+z_test_rate<- (cross$Test_Rate - mean(cross$Test_Rate))/sqrt(var(cross$Test_Rate))
+N <- length(y)
+the_data4 <- list("y" = y, "n" = n, "N" = N, "type" = type, "z_test_rate" = z_test_rate, "z_enrol" = z_enrol)
+
+
+
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+
+
+
+posterior_p_stand<- run.jags(modelString_p_stand,
+                 data = the_data4,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta1","beta2", "beta3", "p", "y_pred"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 10000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+```
+
+
+Looking at Model1, we know that if the enrollment number and test rate are at their average level among these institutions, the positive test rate of a University is 0.0142 ($\beta_{0}$), and for a LAC is 0.0071 ($\beta_{0} +\beta_{1}$). Looking at the credible intervals for these coefficients, we also know there is a 95% chance that the baseline positive test rate $\beta_{0}$ for University is between 0.0140 to 0.0143; for $\beta_{1}$, we know that the baseline positive test rate of LAC is from 47.27% to 53.02% lower than the baseline positive test rate of a University. 
+
+Holding the institution type and standardized test rate constant, with every one standard deviation increase in the standardized enrollment, there will be a 132% increase in the probability of being tested positive ($\beta_{2}$), and we know that this decrease will range from 130% to 134% with a 95% probability. Holding the institution type and standardized enrollment constant, with every one standard deviation increase in the standardized test rate, there will be a 72.29% decrease in the probability of being tested positive ($\beta_{3}$), and we know that this increase will be from 71.93% to 72.64% with a 95% probability.
+
+
+```{r}
+summary(posterior_mu$mcmc[, 1:3])
+
+#good
+mcmc_trace(posterior_mu$mcmc[, 1:33])
+#good
+mcmc_acf(posterior_mu$mcmc[, 1:33])
+#good
+mcmc_dens_overlay(posterior_mu$mcmc[, 1:33])
+
+```
+
+
+Using Model2, we know that if the test rate is at their average level among these institutions, the baseline probability of one test being positive for University is 0.0451 ($\beta_{0}$), this baseline level could reasonably range from 0.0301 to 0.0700 with a 95% probability. For LAC we will see an average of 66.32% decrease in the odds of one COVID testing being positive ($\beta_{1})$. However, the odds of one COVID test being positive in a LAC could be from 23.37% to 84.00% lower than the odds of one COVID testing being positive in a University with a 95% probability. Holding the institution type still, with every increase of 1 in the test rate variable, there will be a 2.89% decrease in the odds of one COVID testing being positive ($\beta_{3}$). This decrease could range from 1.21% to 4.60%, with a 95% possibility. 
+
+
+The posterior inference made on $p_{j}$ using Model2 is shown in Figure.5 below:
+
+```{r, echo = F, fig.align="center"}
+post_intervals <- mcmc_intervals_data(posterior_mu$mcmc[, 4:33], regex_pars = "p", prob_outer = 0.9) %>% mutate(para = c("Smiths College","Amherst College","Middlebury College","Williams College", "Colby College", "Stanford University", "Harvard University", "Boston University", "Johns Hopkins University", "Bowdoin College", "University of Chicago", "Rice University", "Carleton College", "University of Illinois, Urbana-Champaign", "Macalester College", "Bryn Mawr College", "University of California Berkely", "St. Olaf College", "University of Pennsylvania", "Washington and Lee University", "Ohio State University", "University of Arizona", "University of Washington", "University of Miami", "Pennsylvania State University", "University of Texas Austin", "Purdue University", "University of California Los Angeles", "Univsersity of Michigan", "University of Minnesota Twin City"))
+
+slice(post_intervals, 1:30) %>%
+  ggplot(
+    aes(x = reorder(para, (m)), y = (m), ymin = (ll), ymax = (hh))) +
+  geom_pointrange() +
+  theme_light() +
+  xaxis_text(angle = 0, size = 6) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+)+ xlab("School") + ylab("Positive Test Rate") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+
+
