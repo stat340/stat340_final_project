@@ -1,0 +1,614 @@
+---
+title: "Analysis of COVID-19 Testing Data within Institutions of Higher Education in the United States"
+subtitle: "An In-depth Bayesian Hierarchical Beta-Binomial and Regression Model Application"
+author: "Yicheng Shen, Yucheng Yang, Mitchell Wang"
+date: "11/13/2021"
+indent: true
+header-includes:
+    - \setlength{\parskip}{0em}
+    - \usepackage{setspace}\doublespacing
+    - \setlength{\parindent}{2em}
+    - \usepackage{indentfirst}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE,warning=F)
+library(ggplot2)
+library(dplyr)
+library(knitr) 
+library(tidyr)
+library(gridExtra)
+library(kableExtra)
+library(stargazer)
+library(tidyverse) 
+library(kableExtra)
+library(ProbBayes)
+library(bayesrules)
+library(BB)
+library(LearnBayes)
+library(rjags)
+library(bayesplot)
+library(coda)
+library(patchwork)
+library(runjags)
+
+initsfunction <- function(chain){
+  .RNG.seed <- c(10924,54123,3425,2153)[chain]
+  .RNG.name <- c("base::Super-Duper","base::Super-Duper","base::Super-Duper",
+                 "base::Wichmann-Hill")[chain]
+  return(list(.RNG.seed=.RNG.seed,
+.RNG.name=.RNG.name))}
+```
+
+
+\section{Abstract}
+
+*In this project, we are interested in modelling the positivity rate of COVID in higher education institutions in the U.S. Based on our Bayesian hierarchical Beta-Binomial and regression models, we found that Carleton in 2021 has done a better job controlling the spread of COVID on campus compared with 2020, when the majority of students first began to return. The level of COVID threats in the surrounding area, particularly Rice county, is a significant predictor associated with changes in the number of COVID cases within Carleton, whereas temperature is less relevant in explaining any rise or fall of positive cases on campus. Our findings further suggest that for all higher education institutions, the institution's total enrollment, test rate (number of tests administrated divided by the enrollment) and type of the institution (either being a liberal arts college or a university) are significant predictors affecting the positive rates of COVID testing. A larger student body, less frequent testing and being a university can all be associated with higher COVID positive rates on campus.*
+
+\ 
+ 
+\ 
+
+\ 
+
+**Keywords**: Bayesian Inference; Markov chain Monte Carlo Methods; COVID-19; Public Health among Higher Education Institutions; Just Another Gibbs Sampler (JAGS)
+ 
+\newpage
+
+\section{Introduction}
+
+Much of the year 2021 has been featured with mourning grief and crucial challenges as governments and scientists around the world continue to study how to battle the COVID-19 pandemic and restore citizens’ hope from the enduring health threat.
+However, the insufficiency of public health resources and concerns of community infections persist as we walk towards the third year since the initial outbreak of the pandemic. 
+As of November 12, 2021, the CDC reports that the total positive coronavirus cases in the United States have exceeded 46.8 million with nearly 760,000 related deaths. These alarming statistics constantly remind us that this pandemic is far from being over given the current situation. 
+
+
+Meanwhile, tens of thousands of new cases have emerged on college campuses according to the New York Times, with most of the on-campus cases announced since students returned to campus for the fall term in 2020. Despite usually having high vaccination rates, mask mandates and social distancing requirements, these densely populated campus communities are still vulnerable to this highly contagious disease. As more and more schools began to actively test their population and publish relevant data, it is not only feasible but also imperative that we conduct proper analysis on the spread of COVID within campus communities.    
+
+
+In this project, we are interested in exploring whether Carleton College has effectively contained the infectious disease and protected its campus population from the pandemic, using the weekly testing numbers and positive cases published by Carleton's COVID-19 working groups and committees since the beginning of fall term in 2020. 
+Based on our Bayesian hierarchical Beta-Binomial and regression models, we found that Carleton in 2021 has done a better job controlling the potential spread of COVID on campus compared with 2020, when the majority of students first began to return to campus. 
+The level of COVID threats in the surrounding area, particularly Rice county, is a significant predictor associated with changes of COVID cases within Carleton, whereas temperature is less relevant in explaining any rise or fall of positive cases on campus. 
+We further applied our methodologies to analyze a large sample of 30 higher education institutions in the U.S. Our findings suggest that the institution's total enrollment, test rate (number of tests administrated over total enrolled students) and type of the institution (either being a liberal arts college or university) are significant predictors affecting the positive rates of COVID testing. A larger student body, less frequent testing and being a university can all be associated with higher COVID infection rates on campus.  
+
+
+\section{Data}
+
+As the public health impacts of colleges reopening has become apparent, there has been a substantive move towards greater transparency of COVID testing and reports. 
+The most notable efforts of ensuring information transparency are presented by the COVID dashboards, now maintained by a significant number of institutions to publish their COVID policies, statistics and future plans. 
+The best dashboards, according to the We Rate COVID Dashboards rating scheme, are updated at least once every weekday and include information not only about the positive number of cases but also about the total number of COVID tests conducted and the frequency of testing. 
+These online resources provide us with detailed and easily accessible data that can be used for our model fitting and analysis. 
+
+
+To obtain a full picture of the COVID positive rates among the U.S. higher education institutions, we extracted and complied data from the COVID dashboard of 30 institutions including universities and liberal arts colleges, including Carleton College, our very own campus. 
+For Carleton College, the dashboard publishes 57 weeks of COVID testing data across four terms. The earliest record started on August 9th, 2020 and the latest one was on November 12th, 2021. 
+The data set contains the total number of tests conducted each week, the number of positive and negative tests, and the positive rates within that 7 day period. 
+Among the 57 weeks of records, we have 39 weeks when classes were in session and the college had at least 80% of students on campus, and the rest 18 weeks were summer, winter or spring breaks when most of the student and faculty population were absent. 
+
+
+As full-time college students, our primary interests are to better understand our college's COVID responses and conditions during academic terms, when the majority of the students spend most of the time on campus. Therefore, our analysis would focus on the data from four terms: 10 weeks each for 2020 fall , 2021 winter and 2021 spring, and 9 weeks for 2021 fall term (when the latest record ends). 
+
+
+When looking into a broader population of U.S. colleges and universities, our sampled institutions are largely determined by the availability of clear, published and comprehensive records.
+Since it is the graduate school application season for college seniors, our group complied a list of potential institutions that we are interested in applying or learning more about so that the project could provide us with more relevant insights. 
+Based on whether their COVID dashboards are clear and usable, we selected 30 institutions in total, consisting of 19 universities and 11 liberal arts colleges (LAC). 
+These universities and colleges generally have similar length of records as Carleton, starting from summer of 2020 until November of 2021. The full list of our sampled institutions are shown in Table 1. 
+Since schools have various reporting standards and different lengths of semesters or trimesters, it is hard to cross compare term-specific statistics between these institutions.
+For each institution, we recorded the total number of COVID tests conducted and the total positive cases reported since the summer of 2020. We also searched for their total enrollment this fall term as collected by the U.S. News, representing their population size. 
+
+
+```{r fig.align="center", out.width = "70%", out.height = "55%", echo=F}
+include_graphics("Image/sample_list.png")
+```
+
+In addition to COVID testing numbers and positive cases, our project takes other factors into considerations when building models. In the case of Carleton College, we think our adjacent community could be quite influential, since there have been repeated incidents in which students were infected outside of campus, either when they visited downtown Northfield or other nearby areas. So we found the weekly records of COVID cases reported by Rice Country (where Carleton is situated in) Department of Public Health (2021). Dr. Prince Allotey's recent research also shed some lights on our model by pointing out that temperature can be a significant factor affecting the infection and mortality rates of COVID. The National Oceanic and Atmospheric Administration under the U.S. Department of Commerce (USDOC, 2021) provides daily weather service at the county level. We therefore selected the weekly average temperature available in the data set.   
+
+
+
+\section{Methods}
+
+Our project relies primarily on Bayesian statistical methods and Just Another Gibbs Sampler (JAGS), which is a algorithm for simulating from Bayesian hierarchical models using Markov chain Monte Carlo method, developed by Martyn Plummer (Plummer, 2003).
+
+As college seniors who have been used to online and hybrid learning mode since the pandemic, we are relatively uninformed of the level COVID spread over the past year, specifically the details and exact statistics among and beyond our communities are not always fully understood. Therefore, we consider ourselves possessing very weakly informative or diffused prior belief on this subject. 
+
+In both within Carleton and between institutions cases, we recognize that there could be nested group structures in our data.
+Observations within each group may be correlated, and knowing the case of one week or one school can tell us more information about the others. 
+We also want to be able to generalize to future scenarios and broader populations based on our sampled data. 
+Consequently, we decide to employ a hierarchical Beta-Binomial model structure to analyze the rate of positive cases among total tests conducted. 
+
+
+**Model Specification for Carleton COVID Dashboard Analysis**
+
+We decide to use Beta-Binomial models to model and evaluate the positive COVID test rates within Carleton. We assume that the number of people tested as positive follows a binomial distribution with each test being an independent Bernoulli trial. There also exist other potential factors that could affect the positive test rate of COVID test in Carleton and the relationship between the positive test rate and these factors are linear. The factors considered include the weekly temperature of Rice County and the weekly positive cases of COVID in Rice County. These variables are included in our model as regressors in the link function of positive test rate. In the model equations shown in the following sections, an asteroid on the side of a variable denotes that this variable has been standardized when fitting the model.
+
+For the first model (Hierarchical), we assume that the number of positive COVID cases $Y_{i,k}$ follows a Binomial distribution with probability $\theta_k$ and trials $m_i$, where $\theta_k$ represents the chance of a COVID test administrated in Carleton came back positive and $m_i$ represents the number of tests administered in the corresponding week. The subscript $k$ corresponds with one specific term of Carleton (Fall 2020, Winter 2021, Spring 2021, Fall 2021) and the subscript $i$ corresponds with one specific week (39 weeks in total). We assume that the four $\theta_k$ follow the same Beta distribution with parameters $\alpha,\beta$, which are constructed using the estimated mean $\mu$ and sample size $\eta$.
+We gave a weakly informative prior of Beta(1,1) to $\mu$ and a weekly informative prior of the Logistic(log(100),1) to $\eta$ which indicates that a priori about the shrinkage $\lambda = \eta/(\eta + 100)$ is uniformly distributed on (0, 1).
+
+
++ Sampling: for i in 1...39 and k in 1, 2, 3, 4:
+\begin{equation}
+\begin{gathered}
+{Y}_{i,k}|{\theta}_{k}, {m}_{i} \stackrel{i.i.d.}{\sim} \binom{{m}_{i}}{{\theta}_{k}}\\
+\end{gathered}
+\end{equation}
+
+
++ Prior for $\mathbf{\theta}_{j}$, for k= 1, 2, 3, 4:
+\begin{equation}
+\begin{gathered}
+{\theta_j} \sim {Beta(\alpha,\beta)}
+\end{gathered}
+\end{equation}
+
++ Hyperprior
+\begin{equation}
+\begin{gathered}
+\alpha=\mu \eta; \ \beta = (1-\mu)\eta \\
+\mu \sim Beta(1,1); \ log(\eta) = Logistic(log(100),1)
+\end{gathered}
+\end{equation}
+
+For the second model (Regression), we used the logistic regression as a link function on the probability, and the regressors
+included are the intercept, the weekly temperature of Rice County, and the weekly positive COVID cases in Rice County. 
+We assume that the intercept $\beta_0$, the coefficient for standardized weekly positive COVID cases in Rice County $\beta_1$, the coefficient for standardized weekly temperature of Rice County $\beta_2$. We gave weakly informative prior to the coefficients. 
+
+
++ Sampling: for i in 1,...39:
+\begin{equation}
+\begin{gathered}
+{Y}_{i}|{\theta_i}, {m}_{i} \stackrel{i.i.d.}{\sim} \binom{{m}_{i}}{{\theta}_{i}}\\
+logit({\theta}_{i}) = \beta_0+\beta_1\times rice_i^{*}+\beta_2 \times temp_i^{*}
+\end{gathered}
+\end{equation}
+
+
++ Prior for $\mathbf{\theta}_{i}$, for i = 1,...39:
+\begin{equation}
+\begin{gathered}
+{\beta_{0}} \sim \mathcal{N}(0,\,100)\\
+{\beta_{1}} \sim \mathcal{N}(0,\,100)\\
+{\beta_{2}} \sim \mathcal{N}(0,\,100)\\
+\end{gathered}
+\end{equation}
+
+
+**Model Specification for American Institutions of Higher Education**
+
+We decide to use Beta-Binomial models to study the positive COVID test rates across these institutions. In our setting, we assume that the number of people tested as positive follows a binomial distribution with the total number of tests administrated denoted as $n_{j}$; each test will be one independent Bernoulli trial with probability of $p_{j}$ as the chance of one COVID test administrated in these institutions came back positive. The subscript $j$ specifies that these parameters are institution-specific and $j$ itself correspond to institution index number in our sample. We think that there exist potential factors that affect $p_j$ and the relationship between $p_j$ and these factors are linear as shown in Figure.4 in the Results section. The factors we considered include the institution type (university versus LAC), institution enrollment, and the test rate (calculated as the total number of tests administrated from 2020 to 2021 divided by enrollment for each institution). We also assume that there exists some baseline positive test rate for all educational institutions in the US. In this section, we are interested in studying how well the educational institutions in the US are dealing with the COVID pandemic by investigating $p_j$ across these different schools. 
+
+
+For the first model (Model 1), we used the logit function as a link function on $p_{j}$, which is a simple linear regression including an intercept, the institution type, the standardized enrollment, and the standardized test rate. We denote the intercept as $\beta_{0}$, the coefficient for institution type variable as $\beta_{1}$, the coefficient for the standardized enrollment as $\beta_{2}$, and the coefficient for the standardized test rate as $\beta_{3}$. For all the coefficients mentioned above, we assume they all follow a weakly informative prior $N(0, 100)$.
+
+• \ Below are the equations for Model 1: 
+
++ Sampling: for j in 1,...30:
+\begin{equation}
+\begin{gathered}
+Y_{j}|p_{j}, n_{j} \stackrel{i.i.d.}{\sim} \binom{n_{j}}{p_{j}}\\
+logit(p_{j}) = \beta_{0} + \beta_{1} \times Type_j + \beta_{2} \times Enrollment_j^{*} + \beta_{3} \times TestRate_j^{*}
+\end{gathered}
+\end{equation}
+
+
++ Prior for $\mathbf{p}_{j}$, for j= 1,...30:
+\begin{equation}
+\begin{gathered}
+\beta_{0} \sim \mathcal{N}(0,\,100); \beta_{1} \sim \mathcal{N}(0,\,100)\\
+\beta_{2} \sim \mathcal{N}(0,\,100); \ \beta_{3} \sim \mathcal{N}(0,\,100)
+\end{gathered}
+\end{equation}
+
+
+In the second model (Model 2), we assume that $p_{j}$ follows a Beta distribution with parameters $a_{j}$ and $b_{j}$. We will use reverse elicitation to make posterior inferences on $a_{j}$ and $b_{j}$. We define the mean of the Beta distribution as $\mu_{j} = \frac{a_{j}}{a_{j} +b_{j}}$ and the sample size as $\eta_{j} = a_{j} +b_{j}$. Then we use the logit function as a link function on $\mu_{j}$ with regressors as the intercept, the institution type, and the test rate. Similarly, we denotes the intercept as $\beta_{0}$, the coefficient for institution type as $\beta_{1}$, and the coefficient for test rate as $\beta_{3}$. Again, the coefficients mentioned here all follow a weakly informative prior $N(0, 100)$. 
+
+• \ The equations for Model 2 are shown below:
+
+
++ Sampling: for j in 1,...30:
+\begin{equation}
+\begin{gathered}
+Y_{j}|p_{j}, n_{j} \stackrel{i.i.d.}{\sim} \binom{n_{j}}{p_{j}}\\
+p_{j} \sim {Beta}(a_{j}, b_{j})
+\end{gathered}
+\end{equation}
+
+
++ Prior for $\mathbf{p}_{j}$, for j= 1,...30:
+\begin{equation}
+\begin{gathered}
+a_{j} = \eta_{j} * \mu_{j}\\
+b_{j} = \eta_{j} * (1 - \mu_{j})\\
+logit(\mu_{j}) = \beta_{0} +\beta_{1} \times  Type_{j} + \beta_{3} \times  TestRate_{j}\\
+\eta_{j} = exp(log \ \eta_{j})\\
+log \ \eta_{j} \sim Logistic(logn, 1)
+\end{gathered}
+\end{equation}
+
+
++ Hyperprior
+\begin{equation}
+\begin{gathered}
+\beta_{0} \sim \mathcal{N}(0,\,100)\\
+\beta_{1} \sim \mathcal{N}(0,\,100)\\
+\beta_{3} \sim \mathcal{N}(0,\,100)\\
+logn = log(100)
+\end{gathered}
+\end{equation}
+
+For all models, we made an additional 10000 draws for every chain after an adaptation period of 1000 draws and a burn-in period of 5000 draws, and we kept every 5th draws to reduce the effect of temporal correlation between consecutive MCMC draws. For convergence consistency, we ran 3 chains for both models. We checked convergence and efficiency using trace plots and autocorrelation plots discussed in sections below. 
+
+
+\section{Results}
+
+\subsection{Carleton Covid Dashboard Analysis}
+
+
+```{r EDA2 within Carl, out.width="60%",echo=FALSE, fig.align="center"}
+Covid_Carleton <- read.csv("Covid Data - Carleton.csv")
+Covid_Carleton <- Covid_Carleton%>%filter(Term == "FA20"| Term == "WI21" | Term == "SP21" | Term == "FA21")
+Covid_Carleton$Rice_Standard <- as.vector(scale(Covid_Carleton$Rice_County))
+Covid_Carleton$Temp_Standard <- as.vector(scale(Covid_Carleton$Ave_temp))
+Covid_Carleton$Period <- factor(Covid_Carleton$Period, levels=unique(Covid_Carleton$Period))
+
+ggplot(Covid_Carleton, aes(Period, Positivity_Rate, color = Term, group = 1)) +
+  geom_point() +  geom_line() +
+  theme_bw() +
+  xaxis_text(angle = 90, size = 6)+
+  labs(title = " ", y = "Positivity Rate", x = "")
+```
+
+\vspace{-10pt}
+
+\begin{center}
+\begin{spacing}{0.5}
+\begingroup
+\fontfamily{ppl}\fontsize{6.5}{16}\selectfont
+Figure 1. Carleton COVID Positivity Rate by Week
+\endgroup
+\end{spacing}
+\end{center}
+
+\vspace{-10pt}
+
+From Figure 1, we can see the that the positive rate remains around 0.5% for all the weeks except for a spike at around November 2020 where the positivity rate reached more than 6.5% and a spike at around April 2021 where the positivity rate reached 1%. As we can see in Figure 2, there is an adequate relationship between Carleton's COVID cases with Rice County cases at a weekly basis. However, the relationship between Carleton's cases and the temperature does not seem to be obvious.  
+
+In order to make the coefficients for the regression model easier to interpret, we chose to standardize both the weekly number of COVID cases in Rice County and the weekly average temperature of Rice County. Specifically, we performed the standard procedure of taking the z-score of each observation. 
+
+\vspace{-5pt}
+
+```{r EDA within Carl,echo=FALSE, message = F, warning= F,fig.align="center", fig.width = 10, fig.height = 3}
+Covid_Carleton <- read.csv("Covid Data - Carleton.csv")
+Covid_Carleton$Rice_Standard <- as.vector(scale(Covid_Carleton$Rice_County))
+Covid_Carleton$Temp_Standard <- as.vector(scale(Covid_Carleton$Ave_temp))
+a <- ggplot(Covid_Carleton, aes(Rice_Standard, Positive_Results, group = 1)) + 
+  geom_point() + theme_bw() + 
+  geom_point() + geom_smooth(method = "lm", se = F) + 
+  xaxis_text(angle = 90, size = 6) +
+  labs(title = "Carleton Cases v.s. Rice County Cases ", y = "Carleton Cases", x = "Rice Country Cases")+
+  theme(plot.title = element_text(size = 8, face = "bold"))
+
+
+b <- ggplot(Covid_Carleton, aes(Temp_Standard, Positive_Results, group = 1)) + 
+  geom_point() + geom_smooth(method = "lm", se = F) + 
+  theme_bw() +
+  xaxis_text(angle = 90, size = 6)+
+  labs(title = "Carleton Cases v.s. Rice County Temperature", y = "Carleton Cases", x = "Temperature")+
+  theme(plot.title = element_text(size = 8, face = "bold"))
+
+library(patchwork)
+a+b+plot_layout(nrow=1,ncol=2)
+```
+\vspace{-5pt}
+
+\begin{center}
+\begin{spacing}{0.5}
+\begingroup
+\fontfamily{ppl}\fontsize{6.5}{16}\selectfont
+Figure 2. The correlation of Carleton COVID cases between temperature and Rice county cases. Both temperature and Rice county cases are standardized. 
+\endgroup
+\end{spacing}
+\end{center}
+
+\vspace{-5pt}
+
+For both the Hierarchical Model and the Regression Model, the trace plots and ACF plots have all shown that our draws are well-mixed and our parameters have converged to their posterior regions. The overlaid density plots have shown that the draws from all three chains all converged to the same distribution with similar density curves, for both of the models. The posterior predictive draws also suggests the models are adequate, as the observed mean lies in the center of the distribution of the simulated data mean. 
+
+However, for the Regression Model, the residual plot indicates that there is one potential outlier that affected the constant variance assumption. More speficially, it's the 10th week of Fall term in 2020 that had a unusually high positive test rate. Considering the limited data we have, we chose to proceed with our analysis and acknowledging the fact that our posterior inferences would be more conservative accordingly. 
+
+For the Hierarchical Model, given our priors and data, there is a 95% chance that the ratio of Fall 2021's positivity rate over Fall 2020's positivity rate is within the range from 0.218 to 0.652, indicating that the Carleton is doing better in terms of controlling COVID in Fall 2021 comparing to Fall 2020. Additionally, for Fall 2020, the positivity rate is significantly higher than the rest of the terms as shown in Figure 3. 
+
+```{r, echo = F, results = "hide"}
+modelString <-"
+model{
+## sampling
+for (i in 1:N){
+ y[i] ~ dbin(theta[term[i]], n[i])}
+ 
+## priors
+for (j in 1:M){
+ theta[j] ~ dbeta(alpha, beta)}
+ 
+alpha <- mu * eta
+beta <- (1-mu) * eta
+mu ~ dbeta(1,1)
+eta <- exp(logeta)
+logeta ~ dlogis(log(39), 1)
+}"
+
+Covid_Carleton <- Covid_Carleton %>% filter(Term == "FA20"| Term == "WI21" | Term == "SP21" | Term == "FA21")  %>% mutate(term=recode(Term, "FA20" = 1,"WI21" = 2,"SP21" = 3,"FA21" = 4))
+
+y <- Covid_Carleton$Positive_Results
+n <- Covid_Carleton$Total_Tests
+N <- length(y)
+M <- length(unique(Covid_Carleton$Term))
+term <- Covid_Carleton$term
+the_data <- list(y = y, n=n, N=N,M=M, term = term) 
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+carleton_post <- run.jags(
+  model = modelString,
+  n.chains = 3, 
+  data = the_data, 
+  monitor = c("theta"), 
+  adapt = 1000,  
+  burnin = 2000, 
+  sample = 10000,
+  silent.jags = TRUE  # Eliminates progress bar
+)
+```
+
+```{r, echo = F, fig.align="center", warning=F,message=F, fig.width = 5, fig.height = 2.7}
+post_intervals <- mcmc_intervals_data(carleton_post$mcmc) %>% mutate(para = c("FA20","WI21","SP21","FA21"))
+
+slice(post_intervals, 1:4) %>%
+  ggplot(
+    aes(x = reorder(para, (m)), y = (m), ymin = (ll), ymax = (hh))) +
+  geom_pointrange() +
+  theme_light() +
+  xaxis_text(angle = 0, size = 6) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+)+
+xlab("Term") + ylab("Positive Test Rate")
+```
+
+\begin{center}
+\begin{spacing}{0.5}
+\begingroup
+\fontfamily{ppl}\fontsize{6.5}{16}\selectfont
+Figure 3. The Posterior Predictive Distribution of COVID Positivity Rate during different terms at Carleton. 
+\endgroup
+\end{spacing}
+\end{center}
+
+\vspace{-8pt}
+
+Looking at the Regression Model, we know that for one standard deviation increase of standardized Rice County Cases, the expected percentage increase in the odds of a Carleton COVID test is 104% and there is a 95% probability that the increase of odds will range from 81.87% to 128.51%, given the prior and data. For one standard deviation increase of standardized Rice County Temperature, the expected percentage change in the odds of a Carleton COVID test is -2% and this percentage change of odds will be from 21% lower to 20% higher with a 95% probability. 
+
+
+\subsection{Covid Trend in American Institutions of Higher Education}
+
+
+```{r model mu, echo=FALSE, out.width='50%', results='hide'}
+between<- read.csv("Covid Data - Summary.csv")
+cross<- between %>% mutate(Test_Rate = Total_Tests/Enrollment)
+cross<- cross %>% mutate(type_num = ifelse(Type  == "LAC", 1, 0))
+modelString_mu <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+}
+## priors and regression
+for (i in 1:N){
+   p[i] ~ dbeta(a[i], b[i])
+   a[i] <- phi[i] * mu[i]
+   b[i] <- phi[i] * (1 - mu[i])
+   logit(mu[i]) <- beta0 +beta1*type[i] +beta3*test_rate[i]
+   phi[i] <- exp(logeta[i])
+   logeta[i] ~ dlogis(logn, 1)
+   
+}
+## hyperpriors
+beta0 ~ dnorm(0, 0.0001)
+beta1 ~ dnorm(0, 0.0001)
+beta3 ~ dnorm(0, 0.0001)
+## predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+}
+"
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+#pop <- cross$Enrollment
+test_rate<- cross$Test_Rate
+N <- length(y)
+the_data2 <- list("y" = y, "n" = n, "N" = N, "type" = type, "test_rate" = test_rate,
+                 "logn" = log(100))
+seed = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+posterior_mu <- run.jags(modelString_mu,
+                 data = the_data2,
+                 n.chains = 3,
+                 monitor = c("beta0","beta1","beta3", "p", "y_pred"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 10000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+```
+
+
+
+Figure.4 below shows that there exist a medium negative correlation between the test rate and positivity rate and a medium positive correlation between the positivity rate and enrollment. Positivity rate is defined as total number of positive tests divided by the total number of tests administrated.
+
+```{r, echo = F, fig.align="center", warning=F,message=F, fig.width = 10, fig.height = 3}
+between<- read.csv("Covid Data - Summary.csv")
+cross<- between %>% mutate(Test_Rate = Total_Tests/Enrollment)
+cross<- cross %>% mutate(type_num = ifelse(Type  == "LAC", 1, 0))
+a<- ggplot(cross, aes( x = Positive_Rate, y = Test_Rate, group = 1)) +geom_point()+geom_smooth(method = "lm",se = F) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + theme_bw() +   xaxis_text(angle = 90, size = 6) +
+    labs(title = " ", y = "Test Rates", x = "Positivity Rates")+
+  theme(plot.title = element_text(size = 8, face = "bold"))
+
+b<- ggplot(cross, aes( x = Positive_Rate, y = Enrollment, group = 1)) +geom_point()+geom_smooth(method = "lm",se = F) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))  + theme_bw() +   xaxis_text(angle = 90, size = 6) + 
+      labs(title = " ", x = "Positivity Rates")+
+  theme(plot.title = element_text(size = 8, face = "bold"))
+a+b+plot_layout(ncol = 2, nrow = 1)
+```
+
+\vspace{-5pt}
+
+\begin{center}
+\begin{spacing}{0.5}
+\begingroup
+\fontfamily{ppl}\fontsize{6.5}{16}\selectfont
+Figure 4. The correlation of observed average probability of tested positive for COVID between test rates and enrollment.
+\endgroup
+\end{spacing}
+\end{center}
+
+
+```{r model p stand, results='hide', echo=FALSE}
+modelString_p_stand <-"
+model {
+## likelihood
+for (i in 1:N){
+   y[i] ~ dbin(p[i], n[i])
+   ## priors and regression
+   logit(p[i]) <- beta0 +beta1*type[i]+beta2*z_enrol[i]+beta3*z_test_rate[i]
+}
+## hyperpriors
+beta0 ~ dnorm(0, 0.0001)
+beta1 ~ dnorm(0, 0.0001)
+beta2 ~dnorm(0,0.0001)
+beta3 ~ dnorm(0, 0.0001)
+## predictive 
+for (i in 1:N) {
+   y_pred[i] ~ dbin(p[i], n[i])
+}
+}
+"
+y <- cross$Positive_Results
+n <- cross$Total_Tests
+type <- cross$type_num
+z_enrol <- (cross$Enrollment -mean(cross$Enrollment))/sqrt(var(cross$Enrollment))
+z_test_rate<- (cross$Test_Rate - mean(cross$Test_Rate))/sqrt(var(cross$Test_Rate))
+N <- length(y)
+the_data4 <- list("y" = y, "n" = n, "N" = N, "type" = type, "z_test_rate" = z_test_rate, "z_enrol" = z_enrol)
+init = list(
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987654), 
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987653),
+            list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 987652)
+            )
+posterior_p_stand<- run.jags(modelString_p_stand,
+                 data = the_data4,
+                 n.chains = 3,
+                 monitor = c("beta0", "beta1","beta2", "beta3", "p", "y_pred"),
+                 adapt = 1000,
+                 burnin = 5000,
+                 sample = 10000,
+                 thin = 5,
+                 inits = init, silent.jags = TRUE)
+
+
+
+```
+
+
+Looking at Model 1, we know that if the enrollment number and test rate are at their average level among these institutions, the positive test rate of a university is 0.0142 ($\beta_{0}$); for a LAC, this baseline level could decrease by an average of 50.20% ($\beta_{1}$). Looking at the credible intervals for these coefficients, we also know there is a 95% chance that the baseline positive test rate $\beta_{0}$ for university is between 0.0140 to 0.0143; for $\beta_{1}$, we know that the baseline positive test rate of LAC is from 47.27% to 53.02% lower than the baseline positive test rate of a university. 
+
+Holding the institution type and standardized test rate constant, with every one standard deviation increase in the standardized enrollment, there will be a 16.03% increase in the odds of one COVID testing being positive ($\beta_{2}$), and we know that this increase will range from 14.97% to 17.10% with a 95% probability. Holding the institution type and standardized enrollment constant, with every one standard deviation increase in the standardized test rate, there will be a 72.29% decrease in the odds of one COVID testing being positive ($\beta_{3}$), and we know that this increase will be from 71.93% to 72.65% with a 95% probability.
+
+
+Using Model 2, we know that if the test rate is at the average level among these institutions, the baseline probability of one test being positive for university is 0.0451 ($\beta_{0}$), this baseline level could reasonably range from 0.0301 to 0.0700 with a 95% probability. For LAC we will see an average of 66.32% decrease in the odds of one COVID testing being positive ($\beta_{1})$, this decrease could be from 23.37% to 84.00% with a 95% probability. Holding the institution type still, with every increase of 1 in the test rate variable, there will be a 2.89% decrease in the odds of one COVID testing being positive ($\beta_{3}$). This decrease could range from 1.21% to 4.60%, with a 95% possibility. 
+
+
+The posterior inference made on $p_{j}$ using Model 2 is shown in Figure.5 below:
+
+```{r, echo = F, out.width='60%', fig.align="center", warning=F,message=F}
+post_intervals <- mcmc_intervals_data(posterior_mu$mcmc[, 4:33], regex_pars = "p", prob_outer = 0.9) %>% mutate(para = c("Carleton College","St. Olaf College","University of Minnesota" ,"Macalester College","Smiths College","Harvard University","University of Chicago","Ohio State University","Johns Hopkins University","University of California LA", "University of California Berkely", "University of Michigan","Boston University","University of Washington","Rice University","University of Texas Austin","University of Miami","Pennsylvania State University","Amherst College","Williams College","Middlebury College","Bryn Mawr College","Washington and Lee University","Bowdoin College","University of Illinois","Purdue University","Colby College","University of Arizona", "Stanford University", "University of Pennsylvania"))
+slice(post_intervals, 1:30) %>%
+  ggplot(
+    aes(x = reorder(para, (m)), y = (m), ymin = (ll), ymax = (hh))) +
+  geom_pointrange() +
+  theme_light() +
+  xaxis_text(angle = 0, size = 6) +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()
+)+ xlab("") + ylab("Positive Test Rate") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+\begin{center}
+\begin{spacing}{0.5}
+\begingroup
+\fontfamily{ppl}\fontsize{6.5}{16}\selectfont
+Figure 5. Posterior Inference of the chance of one test being positive across institutions from Model 2
+\endgroup
+\end{spacing}
+\end{center}
+
+
+\section{Discussion \& Conclusion}
+
+The Hierarchical model and the Regression model provide valuable insights into how Carleton has handled COVID from 2020 to 2021. 
+The Hierarchical model reflects a significant decrease in the possibility of one COVID being positive in Fall Term 2021 compared with the previous year, which is mainly contributed by the spike of positive cases a the end of 2020. 
+In the Regression model, the standardized Rice County COVID cases are shown to be significant in terms of predicting Carleton's COVID cases. 
+Specifically, one standard deviation increase in the Rice County COVID cases is correlated with a 104% increase of the odds of a Carleton COVID test being positive. 
+This is congruent to the fact that as Carleton is located in Rice County, a lot of transmission came from the residents and workers in Rice County. 
+Contrary to our expectation, the temperature is not influential to the COVID situation in Carleton community.
+The residual plot from the Regression model indicates our model's soundness is affected by one potential outlier. 
+Potential ways to further improve our models include getting a larger number of weekly records and quantifying Carleton's COVID policy as a variable. 
+
+
+The latter two models regarding COVID cases on a wider range of institutions reveal more information about school to school difference in coping with COVID. In specific, we could see that more populated universities with lower test rates usually have a higher possibility of getting positive result from one COVID test than those smaller liberal art colleges that conduct more frequent tests over their populations. The interesting finding is that although from looking at the posterior predictive distribution, Carleton College has a relatively low COVID positive rate among 30 institutions, this performance is in fact below average among the 11 liberal arts colleges in our sample, suggesting that Carleton still has much to work on when comparing with its peers. 
+
+
+Our models have limitations that should be well acknowledged. For example, certain assumptions for linear regression models are not well satisfied with limited data and the existence of extreme outliers. Despite having adequate effective sample sizes, the amount of available data we have access to is still limited due to various reporting standards, thus our conclusion is not strongly generalizable when applying to more institutions. Some variables we selected, for example, the number of enrollment and test rates, are correlated with each other, raising the issue of collinearity. We could also choose more informative priors when setting up the models, since the simple linear regression models are not robust to the choice of hyperpriors. 
+
+
+In summary, our project provides a positive answer to the research question about whether Carleton handled COVID well, with its positive rates decreasing over the terms. 
+We also identified that the situation in the surrounding area is a significant predictor for COVID cases within Carleton. 
+When put into a bigger context, Carleton and other liberal art peers have done a better job overall than larger universities at testing and controlling the spread of COVID, although we should acknowledge that some liberal arts colleges have outperformed Carleton along this process. 
+
+
+
+
+# Reference
+
+
+Plummer, M. (2003, March). JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling. In Proceedings of the 3rd international workshop on distributed statistical computing (Vol. 124, No. 125.10, pp. 1-10).
+
+Rice County Department of Public Health. (2021, November 18). Current situation. Current Situation | Rice County, MN. Retrieved November 19, 2021, from http://www.co.rice.mn.us/492/Coronavirus-disease-COVID-19-Current-Sit. 
+
+The New York Times. (2020, August 26). Tracking the coronavirus at U.S. colleges and Universities. The New York Times. Retrieved November 13, 2021, from https://www.nytimes.com/interactive/2020/us/covid-college-cases-tracker.html. 
+
+U.S. Department of Commerce, T. N. O. and A. A. (2021, October 6). Rice County Climate Records. Climate. Retrieved November 18, 2021, from https://www.weather.gov/wrh/climate?wfo=lox. 
+
+U.S. News & World Report 2021. (2021). U.S. news rankings: National Liberal Arts College and University Rankings. Retrieved November 19, 2021, from https://www.usnews.com/best-colleges/rankings/national-liberal-arts-colleges. 
+
+
+```{r fig.align="center", echo = F, eval = T}
+Covid_Carleton <- read.csv("Covid Data - Carleton.csv")
+kbl(Covid_Carleton, caption = "Appendix A1. COVID Testing and Positive Cases within Carleton College", booktabs = T) %>%
+  kable_styling(latex_options = c("striped", "scale_down"), position = "center", font_size = 5)
+
+Summary <- read.csv("Covid Data - Summary.csv")
+kbl(Summary %>% dplyr::select(-Sources) , caption = "Appendix A2. COVID Testing and Positive Cases within 38 Universities and Colleges", booktabs = T) %>%
+  kable_styling(latex_options = c("striped", "scale_down"), position = "center", font_size = 10)
+```
+
