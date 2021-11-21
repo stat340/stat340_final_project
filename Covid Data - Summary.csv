@@ -1,0 +1,31 @@
+Institution,Total_Tests,Positive_Results,Positive_Rate,Type,Enrollment,Sources
+Carleton College,36418,101,0.28%,LAC,1940,https://www.carleton.edu/covid/dashboard/
+St. Olaf College,42573,225,0.53%,LAC,2953,https://wp.stolaf.edu/covid-19/dashboard/
+University of Minnesota Twin City,33456,1692,5.06%,University,51147,https://safe-campus.umn.edu/return-campus/covid-19-dashboard
+Macalester College,4163,14,0.34%,LAC,2049,https://www.macalester.edu/covid-19/dashboard/dashboard-details/
+Smiths College,71434,29,0.04%,LAC,2183,https://www.smith.edu/covid19/testing
+Harvard University,1232467,1687,0.14%,University,22947,https://www.harvard.edu/coronavirus/testing-tracing/harvard-university-wide-covid-19-testing-dashboard/
+University of Chicago,155482,310,0.20%,University,14467,https://goforward.uchicago.edu/covid-19-dashboard/
+Ohio State University,747182,8232,1.10%,University,66444,https://safeandhealthy.osu.edu/dashboard
+Johns Hopkins University,294505,515,0.17%,University,23917,https://covidinfo.jhu.edu/diagnostic-testing/testing-dashboard/
+University of California Los Angeles,57955,2376,4.10%,University,44947,https://covid-19.ucla.edu/confirmed-cases-of-covid-19-among-the-ucla-campus-community/
+University of California Berkely,164714,638,0.39%,University,41910,https://coronavirus.berkeley.edu/dashboard/
+Univsersity of Michigan,291887,12060,4.13%,University,44718,https://www.uofmhealth.org/covid-19-update
+Boston University,2062000,3013,0.15%,University,32551,https://dailyfreepress.com/2020/08/17/boston-university-coronavirus-data/
+University of Washington,129257,2144,1.66%,University,46081,https://www.washington.edu/coronavirus/testing-results/
+Rice University,72783,191,0.26%,University,6740,https://www.washington.edu/coronavirus/testing-results/
+University of Texas Austin,206942,5189,2.51%,University,50950,https://protect.utexas.edu/ut-austin-covid-19-dashboard/
+University of Miami,226038,3874,1.71%,University,17003,https://coronavirus.miami.edu/dashboard/
+Pennsylvania State University,190381,3567,1.87%,University,98783,https://app.powerbi.com/view?r=eyJrIjoiNDY3NjhiMDItOWY0Mi00NzBmLWExNTAtZGIzNjdkMGI0OTM0IiwidCI6IjdjZjQ4ZDQ1LTNkZGItNDM4OS1hOWMxLWMxMTU1MjZlYjUyZSIsImMiOjF9
+Amherst College,250419,108,0.04%,LAC,1745,https://www.amherst.edu/news/covid-19/dashboard
+Williams College,153423,84,0.05%,LAC,1962,https://www.williams.edu/coronavirus/dashboard/
+Middlebury College ,60320,31,0.05%,LAC,2580,https://www.middlebury.edu/office/covid-19-updates/middlebury-college-main-campus/dashboard/previous-results
+Bryn Mawr College,16008,56,0.35%,LAC,1300,https://www.brynmawr.edu/coronavirus/covid-19-dashboard
+Washington and Lee University,45308,494,1.09%,LAC,1822,https://my.wlu.edu/covid-19-resources/testing-dashboard/final-report-of-winter-term-2021-ongoing-covid-19-testing
+Bowdoin College,45356,84,0.19%,LAC,1777,https://www.bowdoin.edu/index.html
+"University of Illinois, Urbana-Champaign",2368302,7951,0.34%,University,44087,https://splunk-public.machinedata.illinois.edu/en-US/app/uofi_shield_public_APP/home
+Purdue University,218650,6247,2.86%,University,41574,https://protect.purdue.edu/dashboard/
+Colby College,67709,56,0.08%,LAC,2155,https://covid19.colby.edu/health-code-and-testing-data/
+University of Arizona,328668,4713,1.43%,University,44831,https://covid19.arizona.edu/dashboard
+Stanford University,767676,714,0.09%,University,16914,https://healthalerts.stanford.edu/covid-19/covid-dashboard/
+University of Pennsylvania,504221,3496,0.69%,University,25806,https://coronavirus.upenn.edu/content/dashboard
