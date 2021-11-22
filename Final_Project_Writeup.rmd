@@ -2,7 +2,7 @@
 title: "Analysis of COVID-19 Testing Data within Institutions of Higher Education in the United States"
 subtitle: "An In-depth Bayesian Hierarchical Beta-Binomial and Regression Model Application"
 author: "Yicheng Shen, Yucheng Yang, Mitchell Wang"
-date: "11/13/2021"
+date: "11/15/2021"
 indent: true
 header-includes:
     - \setlength{\parskip}{0em}
@@ -48,6 +48,10 @@ initsfunction <- function(chain){
 
 \ 
  
+\ 
+
+\ 
+
 \ 
 
 \ 
@@ -125,7 +129,7 @@ For the first model (Hierarchical), we assume that the number of positive COVID 
 We gave a weakly informative prior of Beta(1,1) to $\mu$ and a weekly informative prior of the Logistic(log(100),1) to $\eta$ which indicates that a priori about the shrinkage $\lambda = \eta/(\eta + 100)$ is uniformly distributed on (0, 1).
 
 
-+ Sampling (likelihood): for i in 1...39 and k in 1, 2, 3, 4:
++ Sampling (likelihood): for i in 1,...,39 and k in 1, 2, 3, 4:
 \begin{equation*}
 \begin{gathered}
 {y}_{i,k}|{\theta}_{k}, {m}_{i} \stackrel{i.i.d.}{\sim} \binom{{m}_{i}}{{\theta}_{k}}\\
@@ -164,7 +168,7 @@ included are the intercept, the weekly temperature of Rice County, and the weekl
 We assume that the intercept $\beta_0$, the coefficient for standardized weekly positive COVID cases in Rice County $\beta_1$, the coefficient for standardized weekly temperature of Rice County $\beta_2$. We gave weakly informative prior to the coefficients. 
 
 
-+ Sampling: for i in 1,...39:
++ Sampling: for i in 1,...,39:
 \begin{equation*}
 \begin{gathered}
 {y}_{i}|{\theta_i}, {m}_{i} \stackrel{i.i.d.}{\sim} \binom{{m}_{i}}{{\theta}_{i}} \\
@@ -174,7 +178,7 @@ logit({\theta}_{i}) = log\frac{{\theta}_{i}}{1-{\theta}_{i}}= \beta_0+\beta_1\ti
 \end{equation*}
 
 
-+ Prior for $\mathbf{\theta}_{i}$, for i = 1,...39:
++ Prior for $\mathbf{\theta}_{i}$, for i = 1,...,39:
 \begin{equation*}
 \begin{gathered}
 {\beta_{0}} \sim \mathcal{N}(0,\,100)\\
@@ -186,8 +190,8 @@ logit({\theta}_{i}) = log\frac{{\theta}_{i}}{1-{\theta}_{i}}= \beta_0+\beta_1\ti
 
 + Posterior
 \begin{align*}
-\pi(\beta_{0},\beta_{1},\beta_{2}|y_1 ... y_i, m_1 ... m_i) &\propto \pi(\beta_{0},\beta_{1},\beta_{2}) \times L(\beta_{0},\beta_{1},\beta_{2}|y_i,m_i) \\ 
-&\propto \pi(\beta_{0})\pi(\beta_{1})\pi(\beta_{2}) \times \prod f(y_1 ... y_n|\beta_{0},\beta_{1},\beta_{2},m_i)
+\pi(\beta_{0},\beta_{1},\beta_{2}|y_1,...,y_i, m_1,..., m_i) &\propto \pi(\beta_{0},\beta_{1},\beta_{2}) \times L(\beta_{0},\beta_{1},\beta_{2}|y_i,m_i) \\ 
+&\propto \pi(\beta_{0})\pi(\beta_{1})\pi(\beta_{2}) \times \prod f(y_1,...,y_n|\beta_{0},\beta_{1},\beta_{2},m_i)
 \end{align*}
 
 
@@ -200,7 +204,7 @@ For the first model (Model 1), we used the logit function as a link function on 
 
 • \ Below are the equations for Model 1: 
 
-+ Sampling: for j in 1,...30:
++ Sampling: for j in 1,...,30:
 \begin{equation*}
 \begin{gathered}
 Y_{j}|p_{j}, n_{j} \stackrel{i.i.d.}{\sim} \binom{n_{j}}{p_{j}}\\
@@ -209,7 +213,7 @@ logit(p_{j}) = \beta_{0} + \beta_{1} \times Type_j + \beta_{2} \times Enrollment
 \end{equation*}
 
 
-+ Prior for $\mathbf{p}_{j}$, for j= 1,...30:
++ Prior for $\mathbf{p}_{j}$, for j= 1,...,30:
 \begin{equation*}
 \begin{gathered}
 \beta_{0} \sim \mathcal{N}(0,\,100); \beta_{1} \sim \mathcal{N}(0,\,100)\\
@@ -217,13 +221,21 @@ logit(p_{j}) = \beta_{0} + \beta_{1} \times Type_j + \beta_{2} \times Enrollment
 \end{gathered}
 \end{equation*}
 
++ Posterior
+\begin{equation*}
+\begin{gathered}
+\pi(\beta_{0}, \beta_{1}, \beta_{2}, \beta_{3}| y_{1},...,y_{j}, n_{1},...,n_{j}) \propto \pi(\beta_{0}, \beta_{1}, \beta_{2}, \beta_{3}) \times L(\beta_{0}, \beta_{1}, \beta_{2}, \beta_{3} |  y_{1},...,y_{j}, n_{1},...,n_{j})\\
+\pi(\beta_{0}, \beta_{1}, \beta_{2}, \beta_{3}) = \pi(\beta_{0})\pi(\beta_{1})\pi(\beta_{2})\pi(\beta_{3})
+\end{gathered}
+\end{equation*}
+
 
 In the second model (Model 2), we assume that $p_{j}$ follows a Beta distribution with parameters $a_{j}$ and $b_{j}$. We will use reverse elicitation to make posterior inferences on $a_{j}$ and $b_{j}$. We define the mean of the Beta distribution as $\mu_{j} = \frac{a_{j}}{a_{j} +b_{j}}$ and the sample size as $\eta_{j} = a_{j} +b_{j}$. Then we use the logit function as a link function on $\mu_{j}$ with regressors as the intercept, the institution type, and the test rate. Similarly, we denotes the intercept as $\beta_{0}$, the coefficient for institution type as $\beta_{1}$, and the coefficient for test rate as $\beta_{3}$. Again, the coefficients mentioned here all follow a weakly informative prior $N(0, 100)$. 
 
+
 • \ The equations for Model 2 are shown below:
 
-
-+ Sampling: for j in 1,...30:
++ Sampling: for j in 1,...,30:
 \begin{equation*}
 \begin{gathered}
 Y_{j}|p_{j}, n_{j} \stackrel{i.i.d.}{\sim} \binom{n_{j}}{p_{j}}\\
@@ -232,7 +244,7 @@ p_{j} \sim {Beta}(a_{j}, b_{j})
 \end{equation*}
 
 
-+ Prior for $\mathbf{p}_{j}$, for j= 1,...30:
++ Prior for $\mathbf{p}_{j}$, for j= 1,...,30:
 \begin{equation*}
 \begin{gathered}
 a_{j} = \eta_{j} \mu_{j}; \ b_{j} = \eta_{j} (1 - \mu_{j})\\
@@ -252,6 +264,16 @@ log \ \eta_{j} \sim Logistic(logn, 1)
 logn = log(100)
 \end{gathered}
 \end{equation*}
+
++ Posterior
+\begin{align*}
+\pi(p_{j}|y_{j}, \mu, \eta) &\propto Prior \times  Likelihood \\
+&\propto \pi(\mu_{j}, \eta_{j}) \times L (p_{j}| y_{1},...,y_{j})\\
+&\propto \pi(\mu_{j}, \eta_{j}) \times L (\beta_{0}, \beta_{1}, \beta_{3} | y_{1},...,y_{j}, n_{1},..., n_{j})\\
+&\propto \pi(\mu_{j}, \eta_{j}) \times \prod f (y_{j}|\beta_{0}, \beta_{1}, \beta_{3}, {n}_{j}) \\
+&\propto \pi(\mu_{j}) \times \pi(\eta_{j}) \times \prod f (y_{j}|\beta_{0}, \beta_{1}, \beta_{3}, {n}_{j})
+\end{align*}
+
 
 For all models, we made an additional 10000 draws for every chain after an adaptation period of 1000 draws and a burn-in period of 5000 draws, and we kept every 5th draws to reduce the effect of temporal correlation between consecutive MCMC draws. For convergence consistency, we ran 3 chains for both models. We checked convergence and efficiency using trace plots and autocorrelation plots discussed in sections below. 
 
@@ -629,6 +651,4 @@ Summary <- read.csv("Covid Data - Summary.csv")
 kbl(Summary %>% dplyr::select(-Sources) , caption = "Appendix A2. COVID Testing and Positive Cases within 38 Universities and Colleges", booktabs = T) %>%
   kable_styling(latex_options = c("striped", "scale_down"), position = "center", font_size = 10)
 ```
-
-
 
